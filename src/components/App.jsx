@@ -1,80 +1,65 @@
-import React, { Component } from 'react';
+import { useState, useEffect } from 'react';
 import imagesApi from '../services/image-app';
 import { Searchbar, ImageGallery, Button, Modal, Loader } from '../components';
 
-export class App extends Component {
-  state = {
-    images: '',
-    hits: [],
-    page: 1,
-    showModal: false,
-    alt: '',
-    URL: null,
-    loading: false,
-    error: null,
-  };
+export default function App() {
+  const [images, setImages] = useState('');
+  const [hits, setHits] = useState([]);
+  const [page, setPage] = useState(1);
+  const [showModal, setShowModal] = useState(false);
+  const [alt, setAlt] = useState('');
+  const [URL, setURL] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  componentDidUpdate(prevProps, prevState) {
-    if (prevState.page !== this.state.page && this.state.page !== 1) {
-      this.setState({ loading: true });
-      imagesApi
-        .fetchImages(this.state.images, this.state.page)
-        .then(({ hits }) => {
-          this.setState(prevState => ({
-            hits: [...prevState.hits, ...hits],
-          }));
-        })
-        .catch(error => this.setState({ error }))
-        .finally(() => this.setState({ loading: false }));
+  useEffect(() => {
+    if (images === '') {
+      return;
     }
-    if (prevState.images !== this.state.images) {
-      this.setState({ loading: true, page: 1, hits: [] });
+
+    const fetchArticles = () => {
+      setLoading(true);
+
       imagesApi
-        .fetchImages(this.state.images, this.state.page)
-        .then(({ hits }) => {
-          this.setState({ hits });
-        })
-        .catch(error => this.setState({ error }))
-        .finally(() => this.setState({ loading: false }));
-    }
-  }
+        .fetchImages(images, page)
+        .then(({ hits }) => setHits(prevHits => [...prevHits, ...hits]))
+        .catch(error => setError(error.message))
+        .finally(() => setLoading(false));
+    };
 
-  handleFormSubmit = images => {
-    this.setState({ images });
+    fetchArticles();
+  }, [images, page]);
+
+  const handleFormSubmit = images => {
+    setImages(images);
+    setHits([]);
+    setPage(1);
   };
 
-  LoadMore = () => {
-    this.setState(prevState => ({
-      page: prevState.page + 1,
-    }));
+  const LoadMore = () => {
+    setPage(prevPage => prevPage + 1);
   };
 
-  openleModal = e => {
-    this.toggleModal();
-    this.setState({ URL: e.target.dataset.picture });
-    this.setState({ alt: e.target.alt });
+  const openleModal = e => {
+    toggleModal();
+    setURL(e.target.dataset.picture);
+    setAlt(e.target.alt);
   };
 
-  toggleModal = e => {
-    this.setState(({ showModal }) => ({ showModal: !showModal }));
+  const toggleModal = e => {
+    setShowModal(!showModal);
   };
 
-  render() {
-    const { hits, error, loading, showModal, URL, alt } = this.state;
-    const { handleFormSubmit, openleModal, LoadMore, toggleModal } = this;
-    return (
-      <div>
-        <Searchbar onSubmit={handleFormSubmit}></Searchbar>
-        <ImageGallery onClick={openleModal} hits={hits} />
-        {loading && <Loader />}
-        {error && <h2>{error.message}</h2>}
-        {hits.length > 0 && !loading && (
-          <Button text="load more" onClick={LoadMore} />
-        )}
-        {showModal && <Modal URL={URL} alt={alt} onToggleModal={toggleModal} />}
-      </div>
-    );
-  }
+  return (
+    <div>
+      <Searchbar onSubmit={handleFormSubmit}></Searchbar>
+      <ImageGallery hits={hits} onClick={openleModal} />
+      {loading && <Loader />}
+      {error && <h2>{error.message}</h2>}
+      {hits.length > 0 && !loading && (
+        <Button text="load more" onClick={LoadMore} />
+      )}
+      {showModal && <Modal URL={URL} alt={alt} onClose={toggleModal} />}
+    </div>
+  );
 }
-
-export default App;
